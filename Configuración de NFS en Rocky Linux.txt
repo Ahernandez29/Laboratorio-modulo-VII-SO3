@@ -1,0 +1,130 @@
+Configuración de NFS en Rocky Linux
+---------------------------------------------------------------------
+
+Instale NFS en el servidor, cree un directorio llamado OS3 que contenga 100 archivos dentro llamados Adrian [1..100].txt que sera el directorio que se utilizara para compartir
+----------------------------------------------------------------------
+
+	SERVIDOR
+
+1- Instalar nfs-utils:
+
+sudo dnf install nfs-utils -y
+
+2- Se habilitan los servicios necesarios:
+
+sudo systemctl enable --now rpcbind
+sudo systemctl enable --now nfs-server 
+
+3- Crear la carpeta con los archivos a compartir con los clientes:
+
+sudo mkdir -p /mnt/OS3
+
+4- Dentro de la carpeta OS3, creamos los 100 archivos.txt:
+
+sudo touch Adrian{1..100}.txt
+---------------------------------------------------------------------
+Asigne los permisos de carpeta y de usuario para que pueda ser acesible por otros usuarios 
+----------------------------------------------------------------------
+
+5- Asignar el directorio al usuario y grupo nobody
+
+sudo chown nobody:nobody /mnt/OS3
+
+6- Conceder permisos de lectura, escritura y ejecucion a todos los usuarios:
+
+sudo chmod 777 /mnt/OS3
+
+----------------------------------------------------------------------
+Configure los exports para definer que directorios y con que permisos seran compartidos
+----------------------------------------------------------------------
+7- Editar el archivo export y agregar la siguiente linea:
+
+/mnt/OS3 192.168.1.0/24(rw,sync,no_root_squash,no_subtree_check)
+
+Explicación:
+
+/mnt/OS3: Directorio a compartir.
+
+192.168.1.0/24: Red que puede acceder a la carpeta compartida.
+
+rw: Permite lectura y escritura.
+
+sudo sync: Fuerza la sincronización de datos para evitar corrupción.
+
+no_root_squash: Permite que los clientes accedan como root (útil en entornos seguros).
+
+no_subtree_check: Mejora el rendimiento evitando comprobaciones innecesarias.
+
+8- APLICAMOS LOS CAMBIOS:
+
+sudo exportfs -rav
+
+Explicación:
+
+-r: Reexporta todos los directorios definidos en /etc/exports.
+
+-a: Exporta todos los directorios.
+
+-v: Muestra información detallada.
+
+9- REINICIAMOS EL SERVIDOR NFS:
+
+sudo systemctl restart nfs-server
+
+10 - DESACTIVAR EL SELinux:
+
+sudo setenforce 0
+
+11- AGREGAR LOS SIGUIENTES SERVICIOS EN EL FIREWALL:
+
+firewall-cmd --add-service=mountd --permanent
+firewall-cmd --add-service=nfs --permanent
+firewall-cmd --add-service=rpc-bind --permanent
+firewall-cmd --reload
+
+**********************************************************************
+
+2. CONFIGURACION DEL CLIENTE NFS
+**********************************************************************
+
+En la maquina Linux cliente instale el cliente de NFS, y monte el directorio compartido desde el servidor NFS
+----------------------------------------------------------------------
+
+1- INSTALAR NFS-UTILS
+
+sudo dnf install nfs-utils
+
+2- CREAR LA CARPETA DONDE SE VA MONTAR EL RECURSO COMPARTIDO:
+
+sudo mkdir -p /mnt/nfs_os3_cliente
+
+3- MONTAR EL RECURSO COMPARTIDO:
+
+sudo mount 192.168.1.38:/mnt/OS3 /mnt/nfs_os3_cliente/
+
+Explicación:
+
+192.168.1.100:/mnt/nfs_share: Dirección IP del servidor y ruta compartida.
+
+/mnt/nfs_client: Punto de montaje en el cliente.
+
+4- VERIFICAR EL MONTAJE:
+
+df -h | grep nfs
+
+----------------------------------------------------------------------
+
+agrega una entrada en el archivo /etc/fstab para que el directorio compartido se monte desde que se reinicie la pc (muestre la prueba de que funciona visualizando los archivos en la VM cliente y luego reiniciando la VM y mostrando como se monta automaticamente al subir el Sistema)
+----------------------------------------------------------------------
+
+5- MONTAJE AUTOMATICO CON /etc/fstab
+
+ 
+sudo nano /etc/fstab
+
+* Agregar la siguiente linea:
+192.168.1.38:/mnt/OS3 /mnt/nfs_os3_cliente   nfs   defaults  0 0
+
+PARA APLICAR LOS CAMBIOS SIN REINICIAR:
+
+sudo mount -a
