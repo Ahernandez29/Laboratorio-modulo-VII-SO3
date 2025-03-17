@@ -1,0 +1,141 @@
+******************************************************************
+Practica 2: Creacion de fileserver compatible con Windows utilizando SAMBA (1Pts)
+******************************************************************
+
+--------------------------------------------------------------------------------------
+Instalar SAMBA y habilitar el servicio
+-------------------------------------------------------------------------------------
+1- Instalar samba y sus herramientas:
+
+sudo dnf install samba samba-client samba-common -y
+
+2- Habilitar los servicios:
+
+sudo systemctl enable --now smb nmb
+
+---------------------------------------------------------------------------------------
+Crear Carpeta Compartida, Crear Usuarios y Grupos y dar los permisos necesarios a la carpeta compartida
+-------------------------------------------------------------------------------------------
+
+3- Crear un directorio para compartir:
+
+sudo mkdir /srv/samba/
+
+DAR LOS PERMISOS PARA QUE TODOS LOS USUARIOS PUEDAN LEER, ESCRIBIR Y EJECUTAR:
+
+sudo chmod 777 /srv/samba
+
+-----------------------------------------------------------------------------------------
+En la carpata de Samba crear 100 archivos llamados adrian(adrian1, adrian2.....adrian100)
+-----------------------------------------------------------------------------------------
+
+-Ir a la carpeta samba creada para compartir recursos:
+cd /srv/samba/
+
+-Crear los 100 archivos:
+sudo touch adrian{1..100}.txt
+
+4- CONFIGURAR EL ARCHIVO DE CONFIGURACION DE SAMBA
+
+sudo nano /etc/samba/smb.conf
+
+- AGREGAR LOS SIGUIENTES PARAMETROS:
+[global]
+workgroup = WORKGROUP
+server string = Servidor Samba %v
+netbios name = rocky
+security = user
+map to guest = Bad User
+dns proxy = no
+
+[Public]
+path = /srv/samba/repositorio
+browsable = yes
+writable = yes
+guest ok = yes
+read only = no
+
+-----------------
+OJO:
+
+[global]: Opciones globales para SAMBA.
+workgroup = WORKGROUP: Nombre del grupo de trabajo, compatible con Windows.
+
+security = user: Requiere autenticación por usuario.
+
+map to guest = Bad User: Usuarios desconocidos se mapean como invitados.
+
+[PublicShare]: Definición del recurso compartido.
+
+path: Ruta del directorio compartido.
+
+browsable: Permite que sea visible en la red.
+
+writable: Permite escritura.
+
+guest ok: Permite acceso sin contraseña.
+
+read only = no: Desactiva sólo lectura.
+--------------------------------------------
+
+5- Configurar firewalld para permitir SAMBA
+
+sudo firewall-cmd --permanent --add-service=samba
+sudo firewall-cmd --reload
+
+6- CREAR UN USUARIO Y GRUPO SAMBA (OPCIONAL)
+
+sudo useradd argenis-samba
+sudo smbpasswd -a argenis-samba
+sudo usermod -aG grupo-samba argenis-samba
+
+Explicación:
+
+useradd sambauser: Crea un usuario local.
+
+smbpasswd -a sambauser: Agrega el usuario a la base de datos de SAMBA y solicita establecer una contraseña.
+
+Importante: Como en este ejemplo configuramos el recurso para acceso invitado (guest ok = yes), la creación de usuario es opcional.
+
+------------------------------------------------------------------------------------
+
+Acceso desde un cliente Linux 
+-------------------------------------------------------------------------
+Desde un cliente Linux:
+
+smbclient //192.168.1.100/Public -N
+
+//192.168.1.100/Public: Ruta al recurso compartido SAMBA.
+
+-N: No solicita contraseña (modo invitado).
+
+**************
+O montar el recurso:
+
+sudo mount -t cifs //192.168.1.100/Public /mnt -o guest
+
+------------------------------------------------------------------------------------
+ACCESO DESDE UN CLIENTE WINDOWS
+------------------------------------------------------------------------------------
+
+Desde Windows:
+
+Pasos para mapear un nuevo disco virtual:
+
+Abrir el Explorador de Archivos.
+
+Hacer clic en Este equipo en el panel izquierdo.
+
+En la barra superior, seleccionar Conectar a unidad de red.
+
+Elegir una letra para la unidad (por ejemplo, Z:).
+
+En el campo Carpeta, escribir:
+
+\\192.168.1.100\Public
+
+Marcar la casilla Conectar de nuevo al iniciar sesión si se desea que el recurso se monte automáticamente al reiniciar.
+
+Hacer clic en Finalizar.
+
+Ahora, el recurso compartido aparecerá como un disco virtual bajo "Este equipo"
