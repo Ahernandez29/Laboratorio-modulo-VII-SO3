@@ -97,6 +97,10 @@ smbpasswd -a sambauser: Agrega el usuario a la base de datos de SAMBA y solicita
 
 Importante: Como en este ejemplo configuramos el recurso para acceso invitado (guest ok = yes), la creación de usuario es opcional.
 
+7- CONFIGURAR SElinux EN MODO PERMISIVE:
+
+setenforce 0
+
 ------------------------------------------------------------------------------------
 
 Acceso desde un cliente Linux 
