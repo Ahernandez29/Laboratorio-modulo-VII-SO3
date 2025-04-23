@@ -1,0 +1,289 @@
+
+# Práctica 3: Creación de Controlador de Dominio con Cliente Windows
+
+## Paso 1: Actualizar sistema e instalar dependencias
+sudo dnf update -y
+sudo dnf install -y samba samba-dc samba-client krb5-workstation
+
+## Paso 2: Configurar nombre de host
+sudo hostnamectl set-hostname dc.so3.inet
+sudo vim /etc/hosts
+# Agregar: 192.168.1.100   dc.so3.inet   dc
+
+## Paso 3: Configurar DNS
+sudo vim /etc/resolv.conf
+# Contenido:
+# nameserver 192.168.1.100
+# search so3.inet
+
+## Paso 4: Configurar SELinux
+sudo setenforce 0
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+
+## Paso 5: Provisión del dominio SAMBA4
+sudo samba-tool domain provision --use-rfc2307 --interactive
+# Realm: SO3.INET
+# Domain: SO3
+# Server Role: dc
+# DNS backend: SAMBA_INTERNAL
+# DNS forwarder IP: 8.8.8.8
+# Administrator password: (matrícula segura)
+
+## Paso 6: Iniciar servicios de SAMBA
+sudo systemctl enable --now samba smb nmb winbind
+sudo systemctl status samba smb nmb winbind
+
+## Paso 7: Configurar Firewall
+sudo firewall-cmd --add-service=samba --permanent
+sudo firewall-cmd --add-service=dns --permanent
+sudo firewall-cmd --reload
+
+## Paso 8: Crear usuario lanegracubana
+sudo useradd lanegracubana
+sudo passwd lanegracubana  # usar matrícula como contraseña
+sudo samba-tool user create lanegracubana
+sudo samba-tool user list
+
+## Paso 9: Agregar cliente Windows al dominio
+# En la configuración de red de Windows:
+# - Establecer DNS: 192.168.1.100
+# - Unirse al dominio: SO3.INET
+# - Usuario: Administrator, Contraseña: (configurada en SAMBA)
+
+## Paso 10: Iniciar sesión desde Windows como usuario de dominio
+# Usuario: lanegracubana
+# Contraseña: matrícula
+
+## Resumen de comandos usados:
+sudo dnf install -y samba samba-dc samba-client krb5-workstation
+sudo hostnamectl set-hostname dc.so3.inet
+sudo vim /etc/hosts
+sudo vim /etc/resolv.conf
+sudo setenforce 0
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+sudo samba-tool domain provision --use-rfc2307 --interactive
+sudo systemctl enable --now samba smb nmb winbind
+sudo firewall-cmd --add-service=samba --permanent
+sudo firewall-cmd --add-service=dns --permanent
+sudo firewall-cmd --reload
+sudo useradd lanegracubana
+sudo passwd lanegracubana
+sudo samba-tool user create lanegracubana
+
+****************************************************************************
+
+		CONTROLADOR DE DOMINIO
+
+1- CONFIGURAR EL NOMBRE DEL HOST DEL SERVIDOR:
+
+hostnamectl set-hostname so3.inet
+hostname
+
+2-CON NMTUI REALIZAR CIERTAS CONFIGURACIONES A NUESTRO ADAPTADOR DE RED:
+
+nmtui
+
+*anadir ip: 192.168.1.30
+*gateway: 192.168.1.1
+*DNS servers: 8.8.8.8
+		8.8.4.4
+		192.168.1.30
+
+3- ABRIR EL ARCHIVO HOSTS PARA AGREGAR EL NUEVO DOMINIO E IP:
+
+sudo vi /etc/hosts
+
+*AGREGAR LO SIGUIENTE AL FINAL DEL ARCHIVO:
+192.168.1.30 so3-dom	so3.inet  inet
+
+4- REINICIAR LA TARJETA DE RED
+
+5- DIRIGIRSE HACIA EL ARCHIVO resolv.conf Y ANADIR LO SIGUIENTE:
+
+sudo vi /etc/resolv.conf
+*anadir: nameserver  fe80::1%ens160 
+
+6-RENOMBRAR LOS ARCHIVOS DE CONFIGURACION ANTIGUOS PARA HACER UNA COPIA DE SEGURIDAD:
+
+sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.backup
+sudo mv /etc/krb5.conf /etc/krb5.conf.backup
+
+7- DESCARGAR EL PAQUETE DE SAMBA DESDE EL SITIO WEB OFICIAL:
+wget https://download.samba.org/pub/samba/stable/samba-4.16.2.tar.gz
+
+
+
+8- EXTRAER LOS ARCHIVOS DESCARGADOS:
+sudo mkdir -p /samba
+sudo mv samba-4.16.2.tar.gz /samba
+cd /samba
+tar -zxf samba-4.16.2.tar.gz samba-4.16.2/
+cd samba-4.16.2
+
+
+9- INSTALAR EL REPOSITORIO EPEL:
+
+sudo dnf install epel-release
+
+10- ACTIVAR EL REPOSITORIO DE POWERTOOLS:
+
+sudo dnf config-manager --set-enabled crb
+dnf update -y
+
+11- INSTALAR TODOS LOS PAQUETES NECESARIOS PARA COMPIAR SAMBA:
+
+dnf -y install docbook-style-xsl python3-markdown bison dbus-devel flex gcc gdb gnutls-devel jansson-devel \ keyutils-libs-devel krb5-workstation libacl-devel libaio-devel libarchive-devel libattr-devel libblkid-devel \ libtasn1-tools libxm12-devel libxslt lmdb-devel openldap-devel pam-devel perl perl-ExtUtils-MakeMaker \ perl-Parse-Yapp popt-devel python3-cryptography python3-dns python3-gpg python3-devel readline-devel rpcgen \ systemd-devel tar zlib-devel perl-JSON gpgme-devel screen
+
+
+12- REVISAR SI HAY ACTUALIZACIONES PARA TODOS LOS PAQUETES:
+
+dnf -y update
+
+13- PREPARAR LA CONFIGURACION PARA COMPILAR SAMBA:
+
+./configure
+******************
+OJO: instalar estos paquetes si el comando no se completo:
+sudo dnf install -y gnutls-devel
+sudo dnf install lmdb-devel -y
+sudo dnf install python39 python39-devel
+export PYTHON=python3.9
+
+sudo dnf install python3-pip
+pip3 install setuptools
+pip3 install distutils
+sudo dnf install -y python3-devel python3-setuptools
+sudo dnf install -y gpgme-devel
+sudo dnf install -y python3-gpg
+sudo dnf install -y jansson-devel
+sudo dnf install -y libarchive-devel
+sudo dnf install -y libacl-devel
+sudo dnf install -y openldap-devel
+sudo dnf install -y pam-devel
+sudo dnf install -y dbus-devel
+sudo dnf install -y python3-markdown
+sudo dnf install -y python3-dns
+
+
+14- REALIZAR LA COMPILACION DE SAMBA:
+
+make -j 2
+
+******
+OJO: si da error, instalar lo siguiente:
+sudo dnf install -y rpcgen
+sudo dnf install -y perl-JSON
+sudo dnf install -y perl-FindBin
+sudo dnf install -y popt-devel
+
+15- INSTALAR LOS ARCHIVOS COMPILADOS DE SAMBA:
+
+make -j 2 install
+
+16- ANADIR LAS RUTAS DE SAMBA AL PATH:
+
+export PATH=/usr/local/samba/bin/:/usr/local/samba/sbin/:$PATH
+
+17- ANADIR EL PATH A LOS PERFILES PARA USUARIO Y ROOT:
+
+nano ~/.bash_profile
+** a este archivo, agregarle el siguiente contenido al final:
+PATH=$PATH:$HOME/bin:/usr/local/samba/sbin/:/usr/local/samba/sbin/:$PATH
+export PATH
+
+nano ../.bash_profile
+
+PATH=$PATH:$HOME/bin:/usr/local/samba/sbin/:/usr/local/samba/sbin/:$PATH
+export PATH
+
+18- PROVISION DEL DOMINIO, ASEGURARSE DE QUE LOS NOMBRES DE LAS INTERFACES SEAN CORRECTOS:
+
+samba-tool domain provision --use-rfc2307 --interactive --option="interfaces= lo ens160" --option="bind interfaces only=yes"
+
+- INGRESAR LOS DETALLES EN LA INTEFAZ:
+*REALM [INET]: so3.inet
+*DOMAIN: so3-dom
+*SERVER ROLE: dc
+*BACKEND DNS: SAMBA_INTERNAL
+*CONTRASENA: Argenis20240916
+
+19- INICIALIZAR SAMBA: 
+
+samba
+
+20- PROBAR RESOLUCION DNS:
+
+ping www.google.com
+
+21- REVISAR LOS REGISTROS DE HOST:
+
+host -t SRV _ldap._tcp.so3.inet
+
+host -t SRV _Kerberos._udp.so3.inet
+
+22- PROBAR LA RESOLUCION DEL DOMINIO:
+
+ping so3.inet
+
+23- COPIAR EL ARCHIVO DE KERBEROS A SU UBICACION:
+
+cp /usr/local/samba/private/krb5.conf /etc/krb5.conf
+
+24- INSTALAR IPTABLES Y ACTIVARLO:
+
+dnf -y install iptables-services
+
+25- DETENER Y DESACTIVAR EL FIREWALLD:
+
+sudo systemctl stop firewalld
+
+26- HABILITAR EL SERVICIO IPTABLES:
+
+sudo systemctl enable --now iptables
+
+27- ABRIR EL ARCHIVO DE CONFIGURACION DE IPTABLES:
+
+sudo vi /etc/sysconfig/iptables
+
+28- ANADIR LAS SIGUIENTES LINEAS ANTES DE LA LINEA -A INPUT -J REJECT:
+
+-A INPUT -p tcp -s 192.168.1.30/24 -m state --state NEW -m multiport --dports 53,88,135,139,389,445,464,6363268,49152:65535 -j ACCEPT
+
+-A INPUT -p udp -s 192.168.1.30/24 -m state --state NEW -m multiport --dports 53,123,137,138,389,636 -j ACCEPT
+
+29- REINICIAR EL SERVICIO IPTABLES:
+
+sudo systemctl restart iptables.service
+
+30- ANADIR EL REGISTRO A EN EL DNS DE SAMBA:
+
+samba-tool dns add 192.168.1.30 so3.inet www A IP_WINDOWS -U administrator
+
+#################################################################
+		DIRIGIRSE A LA MAQUINA DE WINDOWS
+#################################################################
+
+1- Abrir el panel de control
+2- Redes e internet
+3- Centro de redes y recursos
+4- Cambiar configuracion del adaptador
+5- Abrir adaptador
+6- Propiedades
+7- IPv4
+8- Agregar DNS: 192.168.1.30
+9- Agregar DNS de google: 8.8.8.8
+
+# AGREGAR LA MAQUINA DE WINDOWS AL DOMINIO:
+
+- abrir configuracion
+- Acerca de / about your system
+- Configuracion avanzada del sistema / advance system settings
+- Nombre del equipo / computer name
+- id de red / network id
+- Dar en siguiente
+- Colocar nombre: Administrator
+- Contrasena: Argenis20240916
+- Nombre de dominio: so3.inet
+- Seguir colocando el dominio y el nombre del usuario
+
+
